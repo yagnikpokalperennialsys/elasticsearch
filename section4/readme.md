@@ -863,4 +863,361 @@ PUT /my_index
     }
   }
 }
+
+#Dynamic mapping template
+# Dynamic mapping templates in Elasticsearch allow you to define rules for how fields should be dynamically mapped based on their names or patterns. 
+#Map whole numbers to integer instead of long
+PUT /dynamic_template_test
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "integers": {
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "integer"
+          }
+        }
+      }
+    ]
+  }
+}
+#Test the dynamic template
+POST /dynamic_template_test/_doc
+{
+  "in_stock": 123
+}
+#Retrieve mapping (and dynamic template)
+GET /dynamic_template_test/_mapping
+#Modify default mapping for strings (set ignore_above to 512)
+PUT /test_index
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "strings": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 512
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+#Using match and unmatch
+PUT /test_index
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "strings_only_text": {
+          "match_mapping_type": "string",
+          "match": "text_*",
+          "unmatch": "*_keyword",
+          "mapping": {
+            "type": "text"
+          }
+        }
+      },
+      {
+        "strings_only_keyword": {
+          "match_mapping_type": "string",
+          "match": "*_keyword",
+          "mapping": {
+            "type": "keyword"
+          }
+        }
+      }
+    ]
+  }
+}
+
+POST /test_index/_doc
+{
+  "text_product_description": "A description.",
+  "text_product_id_keyword": "ABC-123"
+}
+#Setting match_pattern to regex
+PUT /test_index
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "names": {
+          "match_mapping_type": "string",
+          "match": "^[a-zA-Z]+_name$",
+          "match_pattern": "regex",
+          "mapping": {
+            "type": "text"
+          }
+        }
+      }
+    ]
+  }
+}
+
+POST /test_index/_doc
+{
+  "first_name": "John",
+  "middle_name": "Edward",
+  "last_name": "Doe"
+}
+#Using path_match
+PUT /test_index
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "copy_to_full_name": {
+          "match_mapping_type": "string",
+          "path_match": "employer.name.*",
+          "mapping": {
+            "type": "text",
+            "copy_to": "full_name"
+          }
+        }
+      }
+    ]
+  }
+}
+
+POST /test_index/_doc
+{
+  "employer": {
+    "name": {
+      "first_name": "John",
+      "middle_name": "Edward",
+      "last_name": "Doe"
+    }
+  }
+}
+#Using placeholders
+PUT /test_index
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "no_doc_values": {
+          "match_mapping_type": "*",
+          "mapping": {
+            "type": "{dynamic_type}",
+            "index": false
+          }
+        }
+      }
+    ]
+  }
+}
+
+POST /test_index/_doc
+{
+  "name": "John Doe",
+  "age": 26
+}
+
+
+
+
+
+
+
+# creating an index with the standard analyzer,
+PUT /my_index6
+{
+  "mappings": {
+    "properties": {
+      "text_field": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+# When you index a document:
+
+
+POST /my_index6/_doc
+{
+  "text_field": "running"
+}
+
+# Elasticsearch will apply the stemming process during indexing, and when you search:
+# stemming is a process that involves reducing words to their base or root form. This is done to improve search accuracy by treating different forms of the same word as equivalent.
+GET /my_index6/_search
+{
+  "query": {
+    "match": {
+      "text_field": "run"
+    }
+  }
+}
+
+# stop words are common words that are often filtered out during the indexing process to improve search performance and relevance.
+# The stop words like "is," "a," "with," etc., are filtered during indexing.
+
+
+DELETE /my_index
+PUT /my_index
+{
+  "mappings": {
+    "properties": {
+      "text_field": {
+        "type": "text"
+      }
+    }
+  }
+}
+
+POST /my_index/_doc/1
+{
+  "text_field": "This is a sample document with common English stop words."
+}
+
+GET /my_index/_doc/1
+
+# Stemming analyzer
+# create a custom analyzer that includes stemming in Elasticsearch, you can define an analyzer with a stemmer filter.
+PUT /stemming_analyzer_index
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "custom_stemming_analyzer": {
+          "tokenizer": "standard",
+          "filter": ["lowercase", "english_stemmer"]
+        }
+      },
+      "filter": {
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "english"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "text_field": {
+        "type": "text",
+        "analyzer": "custom_stemming_analyzer"
+      }
+    }
+  }
+}
+
+
+#Standard Analyzer:
+
+#The standard analyzer is the default analyzer for text fields.
+#It provides grammar-based tokenization (breaks text into words), lowercase filtering, and stop word removal.
+# remove white space, characters, dots, excalamnation, lower case
+
+POST /_analyze
+{
+  "analyzer": "standard",
+  "text": "The quick brown fox jumps over the lazy dog."
+}
+
+
+# Simple Analyzer
+# Tokenization: Splits text into words based on whitespace.
+#Lowercasing: Converts tokens to lowercase.
+#Punctuation: No punctuation in tokens.
+#Simplicity: Removes some common English stop words.
+POST /_analyze
+{
+  "analyzer": "simple",
+  "text": "The quick brown fox jumps over the lazy dog."
+}
+
+# Whitespace Analyzer
+POST /_analyze
+{
+  "analyzer": "whitespace",
+  "text": "The quick brown fox jumps over the lazy dog."
+}
+
+# Keyword Analyzer
+# The keyword analyzer indexes the entire input as a single token.
+POST /_analyze
+{
+  "analyzer": "keyword",
+  "text": "The quick brown fox jumps over the lazy dog."
+}
+
+#Tokenization: Treats the entire input as a single token.
+#No Lowercasing: Preserves the case of the original text.
+#No Punctuation Removal: Retains punctuation.
+
+# Pattern Analyzer
+# The pattern analyzer uses a regular expression pattern to tokenize the text.
+
+POST /_analyze
+{
+  "analyzer": "pattern",
+  "text": "The quick brown fox jumps over the lazy dog.",
+  "tokenizer": {
+    "pattern": "\\s|\\."
+  }
+}
+
+# Tokenization: Uses a regular expression pattern to split text into words based on whitespace or dots.
+#Lowercasing: Converts tokens to lowercase.
+#Punctuation: Retains punctuation in tokens based on the specified pattern.
+
+# Creating a custom analyzer in Elasticsearch involves defining your own set of tokenizers and filters to tailor the text processing to your specific requirements.
+PUT /my_custom_analyzer_index
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "my_custom_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "my_custom_filter"]
+        }
+      },
+      "filter": {
+        "my_custom_filter": {
+          "type": "stop",
+          "stopwords": ["the", "and", "is"]  // Customize the list of stop words
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "text_field": {
+        "type": "text",
+        "analyzer": "my_custom_analyzer"
+      }
+    }
+  }
+}
+#We've created an index named my_custom_analyzer_index.
+#The custom analyzer is named my_custom_analyzer.
+#The tokenizer used is the standard tokenizer.
+#The filter chain includes the lowercase filter and a custom filter named my_custom_filter.
+#The my_custom_filter is of type stop and includes a customized list of stop words.
+
+# Use custome analyzer
+POST /my_custom_analyzer_index/_analyze
+{
+  "analyzer": "my_custom_analyzer",
+  "text": "The quick brown fox jumps over the lazy dog."
+}
+
+
+
+
+
+
+
 ```
